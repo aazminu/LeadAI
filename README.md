@@ -62,6 +62,10 @@ The project was built for a GTM Engineer practical assignment: automate or augme
 5. Agent outputs are saved to the database.
 6. The dashboard updates with score, tier, insights, email draft, and recommended action.
 
+## Sample Outputs
+
+- [First batch enriched lead outputs](docs/first_batch_outputs.csv) - CSV export from a 16-lead batch run, including lead status, score, tier, recommended action, email draft, and serialized agent outputs.
+
 ## API Overview
 
 Key backend routes:
