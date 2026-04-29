@@ -1,0 +1,48 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+leadOSenv/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+*.tsbuildinfo
+
+# Local database and generated data
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+exports/
+
+# Logs and local OS/editor files
+*.log
+.DS_Store
+.idea/
+.vscode/
+.codex/
+
+# Keep sample inputs trackable unless explicitly ignored later.

@@ -1,0 +1,42 @@
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# Settings & Config
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# HTTP Client (async, for parallel API calls)
+httpx>=0.26.0
+
+# LLM (provider-agnostic)
+litellm>=1.30.0
+
+# Anthropic (underlying provider)
+anthropic>=0.18.0
+
+# Scheduling
+apscheduler>=3.10.0
+
+# Data processing
+pandas>=2.2.0
+python-multipart>=0.0.9
+
+# Retry logic
+tenacity>=8.2.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Dev/testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.26.0
+
+exa-py>=1.0.0
+langgraph>=0.2.0
