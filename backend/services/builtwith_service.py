@@ -59,7 +59,7 @@ class BuiltWithService:
         self.client = httpx.AsyncClient(
             timeout=30.0,
             headers={
-                "User-Agent": "LeadOS/1.0 janardhanr@janardhanr.com"
+                "User-Agent": "LeadAI/1.0 m4u5t4@u.northwestern.edu"
             }
         )
 
