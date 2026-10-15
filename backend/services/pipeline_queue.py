@@ -8,9 +8,10 @@ from typing import Any, AsyncIterator
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from agents.orchestrator import real_graph
 from db.database import AsyncSessionLocal
 from db.models import EnrichmentResult, Lead, LeadStatus, LeadTier, PipelineEvent
+
+real_graph = None
 
 logger = logging.getLogger(__name__)
 
@@ -262,8 +263,10 @@ async def _claim_next_queued_lead() -> Lead | None:
 
 
 async def recover_stalled_leads() -> int:
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=STALLED_AFTER_MINUTES)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(minutes=STALLED_AFTER_MINUTES)
     recovered = 0
+    events_to_emit: list[tuple[str, str, str, str, str | None, dict[str, Any]]] = []
 
     async with AsyncSessionLocal() as session:
         leads = (
@@ -282,26 +285,41 @@ async def recover_stalled_leads() -> int:
                 lead.last_error = "Recovered stalled processing lead and requeued"
                 event_type = "pipeline_requeued"
                 message = "Stalled pipeline requeued"
+                icon = "↻"
             else:
                 lead.status = LeadStatus.failed
                 lead.last_error = "Pipeline stalled after maximum retry attempts"
                 event_type = "pipeline_failed"
                 message = "Stalled pipeline failed"
+                icon = "⚠️"
 
+            lead.updated_at = now
             recovered += 1
-            await event_bus.emit(
-                lead.id,
-                event_type,
-                icon="↻" if lead.status == LeadStatus.queued else "⚠️",
-                message=message,
-                detail=lead.last_error,
-                payload={
-                    "status": lead.status.value,
-                    "attempt_count": lead.attempt_count,
-                },
+            events_to_emit.append(
+                (
+                    lead.id,
+                    event_type,
+                    icon,
+                    message,
+                    lead.last_error,
+                    {
+                        "status": lead.status.value,
+                        "attempt_count": lead.attempt_count,
+                    },
+                )
             )
 
         await session.commit()
+
+    for lead_id, event_type, icon, message, detail, payload in events_to_emit:
+        await event_bus.emit(
+            lead_id,
+            event_type,
+            icon=icon,
+            message=message,
+            detail=detail,
+            payload=payload,
+        )
 
     return recovered
 
@@ -346,6 +364,10 @@ async def _run_pipeline_for_lead(lead: Lead) -> None:
     }
 
     try:
+        global real_graph
+        if real_graph is None:
+            from agents.orchestrator import real_graph as _real_graph
+            real_graph = _real_graph
         result = await real_graph.ainvoke(state)
         terminal_status = (
             LeadStatus.disqualified
