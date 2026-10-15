@@ -81,6 +81,7 @@ async def test_upload_batch_deduplicates_and_enqueues(monkeypatch):
         " name , email , company , property_address , city , state , country \n"
         "Alice Smith, alice@example.com , Acme Residential , 100 Main St , Austin , TX , US \n"
         " , , , , , , \n"
+        "Incomplete Row, , Acme Residential , 100 Main St , Austin , TX , US \n"
         "Alice Duplicate, ALICE@example.com , acme residential , 100 main st , Austin , TX , US \n"
         "Bob Jones, bob@example.com , Beta Living , 200 Oak Ave , Dallas , TX , \n"
     )
@@ -92,6 +93,7 @@ async def test_upload_batch_deduplicates_and_enqueues(monkeypatch):
     assert res["accepted"] is True
     assert res["count"] == 2
     assert res["skipped_duplicates"] == 1
+    assert res["skipped_invalid"] == 1
     assert res["lead_ids"] == ["lead-1", "lead-2"]
     assert len(enqueued) == 2
     assert enqueued[0].email == "alice@example.com"

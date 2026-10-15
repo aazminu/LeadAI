@@ -268,6 +268,7 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
     created = []
     seen_keys: set[tuple[str, str, str]] = set()
     skipped_duplicates = 0
+    skipped_invalid = 0
 
     required = {"name", "email", "company", "property_address", "city", "state"}
     missing = required - set(reader.fieldnames or [])
@@ -284,6 +285,9 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
             if k is not None
         }
         if not any(row.get(col) for col in required):
+            continue
+        if not all(row.get(col) for col in required):
+            skipped_invalid += 1
             continue
 
         dedup_key = (
@@ -320,6 +324,7 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
         "batch_id": batch_id,
         "count": len(created),
         "skipped_duplicates": skipped_duplicates,
+        "skipped_invalid": skipped_invalid,
         "lead_ids": [lead.id for lead in created],
     }
 
