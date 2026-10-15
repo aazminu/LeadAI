@@ -13,12 +13,17 @@ from config import settings
 # Single engine instance for the entire app.
 # pool_pre_ping=True means it tests connections before using them
 # — handles dropped connections gracefully.
+_engine_kwargs = {
+    "echo": settings.debug,
+    "pool_pre_ping": True,
+}
+if not settings.database_url.startswith("sqlite"):
+    _engine_kwargs["pool_size"] = 10
+    _engine_kwargs["max_overflow"] = 20
+
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.debug,        # logs all SQL when DEBUG=True
-    pool_pre_ping=True,
-    pool_size=10,               # max 10 concurrent DB connections
-    max_overflow=20,            # 20 extra connections under load
+    **_engine_kwargs,
 )
 
 

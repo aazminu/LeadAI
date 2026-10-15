@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from agents.outreach_agent import outreach_agent
 from db.database import get_db
 from db.models import EnrichmentResult, Lead, LeadStatus
 from services.pipeline_queue import (
@@ -15,6 +14,8 @@ from services.pipeline_queue import (
     save_pipeline_result,
     stream_lead_events,
 )
+
+outreach_agent = None
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -209,6 +210,11 @@ async def regenerate_email(
         "completed_agents": enrichment.completed_agents or [],
     }
 
+    global outreach_agent
+    if outreach_agent is None:
+        from agents.outreach_agent import outreach_agent as _outreach_agent
+        outreach_agent = _outreach_agent
+
     result = await outreach_agent.regenerate(
         state=state,
         previous_email=enrichment.email_draft,
@@ -256,8 +262,12 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
 
     content = (await file.read()).decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(content))
+    if reader.fieldnames:
+        reader.fieldnames = [f.strip() for f in reader.fieldnames if f is not None]
     batch_id = str(uuid.uuid4())
     created = []
+    seen_keys: set[tuple[str, str, str]] = set()
+    skipped_duplicates = 0
 
     required = {"name", "email", "company", "property_address", "city", "state"}
     missing = required - set(reader.fieldnames or [])
@@ -267,7 +277,25 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
             detail=f"CSV missing required columns: {', '.join(sorted(missing))}",
         )
 
-    for row in reader:
+    for raw_row in reader:
+        row = {
+            (k.strip() if isinstance(k, str) else k): (v.strip() if isinstance(v, str) else "")
+            for k, v in raw_row.items()
+            if k is not None
+        }
+        if not any(row.get(col) for col in required):
+            continue
+
+        dedup_key = (
+            row["email"].lower(),
+            row["company"].lower(),
+            row["property_address"].lower(),
+        )
+        if dedup_key in seen_keys:
+            skipped_duplicates += 1
+            continue
+        seen_keys.add(dedup_key)
+
         lead = Lead(
             name=row["name"],
             email=row["email"],
@@ -285,13 +313,16 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
     await db.commit()
     for lead in created:
         await db.refresh(lead)
+        await enqueue_lead(lead)
 
     return {
         "accepted": True,
         "batch_id": batch_id,
         "count": len(created),
+        "skipped_duplicates": skipped_duplicates,
         "lead_ids": [lead.id for lead in created],
     }
 
 
 __all__ = ["router", "save_pipeline_result"]
+
