@@ -46,7 +46,7 @@ class WebsiteService:
             timeout=10.0,
             follow_redirects=True,
             headers={
-                "User-Agent": "LeadOS/1.0 janardhanr@janardhanr.com"
+                "User-Agent": "LeadAI/1.0 m4u5t4@u.northwestern.edu"
             }
         )
 
