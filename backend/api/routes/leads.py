@@ -331,3 +331,23 @@ async def upload_batch(file: UploadFile = File(...), db: AsyncSession = Depends(
 
 __all__ = ["router", "save_pipeline_result"]
 
+def compute_batch_ingestion_summary(
+    total_rows: int,
+    accepted: int,
+    skipped_empty: int,
+    duplicates: int = 0,
+) -> dict[str, Any]:
+    """Compute batch CSV ingestion telemetry and yield ratio."""
+    total = max(0, int(total_rows))
+    acc = max(0, int(accepted))
+    skip = max(0, int(skipped_empty))
+    dup = max(0, int(duplicates))
+    yield_ratio = acc / total if total > 0 else 0.0
+    return {
+        "total_rows": total,
+        "accepted": acc,
+        "skipped_empty": skip,
+        "duplicates": dup,
+        "acceptance_ratio": round(yield_ratio, 4),
+        "invariants_ok": (acc + skip + dup) <= total,
+    }
