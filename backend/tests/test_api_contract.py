@@ -189,3 +189,10 @@ async def test_recover_stalled_leads_requeues_and_fails(monkeypatch):
     assert lead_fail.updated_at > old_ts
     assert [e[1] for e in emitted] == ["pipeline_requeued", "pipeline_failed"]
 
+from backend.api.routes.leads import compute_batch_ingestion_summary
+
+
+def test_compute_batch_ingestion_summary():
+    summary = compute_batch_ingestion_summary(total_rows=10, accepted=7, skipped_empty=2, duplicates=1)
+    assert summary["acceptance_ratio"] == 0.7
+    assert summary["invariants_ok"] is True
